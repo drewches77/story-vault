@@ -12,6 +12,7 @@ import StoryTypeChart from '@/components/StoryTypeChart'
 import DashboardCards from '@/components/DashboardCards'
 import StrategyPanel from '@/components/StrategyPanel'
 import ProjectsPanel from '@/components/ProjectsPanel'
+import ClientTabNav from '@/components/ClientTabNav'
 
 type StoryWithTags = Story & { tags: Tag[] }
 
@@ -293,22 +294,11 @@ export default function ClientPage() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200">
-        {(['overview', 'stories'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <ClientTabNav
+        clientId={clientId}
+        activeStoriesTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Overview tab */}
       {activeTab === 'overview' && (
