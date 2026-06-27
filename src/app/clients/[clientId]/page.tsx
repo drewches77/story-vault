@@ -4,11 +4,14 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { exportStoriesToDocx } from '@/lib/export'
-import type { Client, StoryVault, Story, Tag } from '@/lib/types'
+import type { Client, StoryVault, Story, Tag, Project, GeneratedAsset, StoryScore } from '@/lib/types'
 import { STORY_TYPES, USE_CASES, STORY_STATUSES } from '@/lib/types'
 import DropdownMenu from '@/components/DropdownMenu'
 import ImportModal from '@/components/ImportModal'
 import StoryTypeChart from '@/components/StoryTypeChart'
+import DashboardCards from '@/components/DashboardCards'
+import StrategyPanel from '@/components/StrategyPanel'
+import ProjectsPanel from '@/components/ProjectsPanel'
 
 type StoryWithTags = Story & { tags: Tag[] }
 
@@ -46,6 +49,9 @@ export default function ClientPage() {
   const [client, setClient] = useState<Client | null>(null)
   const [vault, setVault] = useState<StoryVault | null>(null)
   const [stories, setStories] = useState<StoryWithTags[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [latestStrategy, setLatestStrategy] = useState<GeneratedAsset | null>(null)
+  const [avgUtilityScore, setAvgUtilityScore] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState<'overview' | 'stories'>('overview')
@@ -78,16 +84,23 @@ export default function ClientPage() {
   async function loadData() {
     setLoading(true)
 
-    const { data: clientData } = await supabase.from('clients').select('*').eq('id', clientId).single()
-    const { data: vaultData } = await supabase.from('story_vaults').select('*').eq('client_id', clientId).order('created_at', { ascending: true }).limit(1).maybeSingle()
+    const [clientRes, vaultRes, projectsRes, strategyRes] = await Promise.all([
+      supabase.from('clients').select('*').eq('id', clientId).single(),
+      supabase.from('story_vaults').select('*').eq('client_id', clientId).order('created_at', { ascending: true }).limit(1).maybeSingle(),
+      supabase.from('projects').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+      supabase.from('generated_assets').select('*').eq('client_id', clientId).eq('asset_type', 'social_strategy').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+    ])
 
-    if (clientData) setClient(clientData)
-    if (vaultData) {
-      setVault(vaultData)
+    if (clientRes.data) setClient(clientRes.data)
+    if (projectsRes.data) setProjects(projectsRes.data)
+    if (strategyRes.data) setLatestStrategy(strategyRes.data)
+
+    if (vaultRes.data) {
+      setVault(vaultRes.data)
       const { data: storyData } = await supabase
         .from('stories')
         .select('*, story_tags(tags(*))')
-        .eq('vault_id', vaultData.id)
+        .eq('vault_id', vaultRes.data.id)
         .order('created_at', { ascending: false })
 
       if (storyData) {
@@ -97,6 +110,21 @@ export default function ClientPage() {
         }))
         setStories(mapped)
         setSelectedIds(new Set(mapped.map((s: StoryWithTags) => s.id)))
+
+        // Load utility scores
+        const storyIds = mapped.map((s: StoryWithTags) => s.id)
+        if (storyIds.length > 0) {
+          const { data: scoreData } = await supabase
+            .from('story_scores')
+            .select('overall_utility_score')
+            .in('story_id', storyIds)
+          if (scoreData && scoreData.length > 0) {
+            const scores = scoreData.map((s: any) => s.overall_utility_score).filter((s: any) => s != null)
+            if (scores.length > 0) {
+              setAvgUtilityScore(scores.reduce((a: number, b: number) => a + b, 0) / scores.length)
+            }
+          }
+        }
       }
     }
     setLoading(false)
@@ -284,9 +312,22 @@ export default function ClientPage() {
 
       {/* Overview tab */}
       {activeTab === 'overview' && (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-5">Stories by Type</h2>
-          <StoryTypeChart stories={stories} />
+        <div className="space-y-5">
+          <DashboardCards
+            stories={stories}
+            projects={projects}
+            latestStrategy={latestStrategy}
+            avgUtilityScore={avgUtilityScore}
+          />
+
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-5">Story Inventory</h2>
+            <StoryTypeChart stories={stories} />
+          </div>
+
+          <StrategyPanel clientId={clientId} latestStrategy={latestStrategy} />
+
+          <ProjectsPanel clientId={clientId} projects={projects} />
         </div>
       )}
 
