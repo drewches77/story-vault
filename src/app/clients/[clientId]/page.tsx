@@ -72,6 +72,11 @@ export default function ClientPage() {
   const [useCases, setUseCases] = useState<string[]>([])
   const [clarityScore, setClarityScore] = useState('')
   const [emotionalScore, setEmotionalScore] = useState('')
+  const [teachingScore, setTeachingScore] = useState('')
+  const [authorityScore, setAuthorityScore] = useState('')
+  const [salesScore, setSalesScore] = useState('')
+  const [relatabilityScore, setRelatabilityScore] = useState('')
+  const [reusabilityScore, setReusabilityScore] = useState('')
   const [storyStatus, setStoryStatus] = useState('raw')
   const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
@@ -209,6 +214,22 @@ export default function ClientPage() {
       if (tagId) await supabase.from('story_tags').insert({ story_id: storyId, tag_id: tagId })
     }
 
+    // Upsert detailed scores if any are set
+    const anyScore = clarityScore || emotionalScore || teachingScore || authorityScore || salesScore || relatabilityScore || reusabilityScore
+    if (anyScore && storyId) {
+      await supabase.from('story_scores').upsert({
+        story_id: storyId,
+        clarity_score: clarityScore ? parseInt(clarityScore) : null,
+        emotional_impact_score: emotionalScore ? parseInt(emotionalScore) : null,
+        teaching_value_score: teachingScore ? parseInt(teachingScore) : null,
+        authority_value_score: authorityScore ? parseInt(authorityScore) : null,
+        sales_value_score: salesScore ? parseInt(salesScore) : null,
+        relatability_score: relatabilityScore ? parseInt(relatabilityScore) : null,
+        reusability_score: reusabilityScore ? parseInt(reusabilityScore) : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'story_id' })
+    }
+
     resetForm()
     setShowForm(false)
     loadData()
@@ -217,11 +238,13 @@ export default function ClientPage() {
 
   function resetForm() {
     setTitle(''); setStoryType(''); setTranscription(''); setShortVersion(''); setLongVersion('')
-    setOneLiner(''); setQuotes(''); setUseCases([]); setClarityScore(''); setEmotionalScore('')
+    setOneLiner(''); setQuotes(''); setUseCases([])
+    setClarityScore(''); setEmotionalScore(''); setTeachingScore(''); setAuthorityScore('')
+    setSalesScore(''); setRelatabilityScore(''); setReusabilityScore('')
     setStoryStatus('raw'); setTagInput(''); setEditingStory(null)
   }
 
-  function openEditStory(story: StoryWithTags) {
+  async function openEditStory(story: StoryWithTags) {
     setTitle(story.title)
     setStoryType(story.story_type ?? '')
     setTranscription(story.transcription ?? '')
@@ -230,11 +253,19 @@ export default function ClientPage() {
     setOneLiner(story.one_liner ?? '')
     setQuotes(story.quotes ?? '')
     setUseCases(story.use_cases ?? [])
-    setClarityScore(story.clarity_score?.toString() ?? '')
-    setEmotionalScore(story.emotional_impact_score?.toString() ?? '')
     setStoryStatus(story.status)
     setTagInput(story.tags.map((t) => t.name).join(', '))
     setEditingStory(story)
+
+    const { data: sc } = await supabase.from('story_scores').select('*').eq('story_id', story.id).maybeSingle()
+    setClarityScore((sc?.clarity_score ?? story.clarity_score)?.toString() ?? '')
+    setEmotionalScore((sc?.emotional_impact_score ?? story.emotional_impact_score)?.toString() ?? '')
+    setTeachingScore(sc?.teaching_value_score?.toString() ?? '')
+    setAuthorityScore(sc?.authority_value_score?.toString() ?? '')
+    setSalesScore(sc?.sales_value_score?.toString() ?? '')
+    setRelatabilityScore(sc?.relatability_score?.toString() ?? '')
+    setReusabilityScore(sc?.reusability_score?.toString() ?? '')
+
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -496,20 +527,27 @@ export default function ClientPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Clarity Score (1–5)</label>
-                <select value={clarityScore} onChange={(e) => setClarityScore(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                  <option value="">—</option>
-                  {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Emotional Impact (1–5)</label>
-                <select value={emotionalScore} onChange={(e) => setEmotionalScore(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                  <option value="">—</option>
-                  {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Scores <span className="font-normal text-gray-400">(1 = low, 5 = high)</span></p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Clarity', hint: 'How clear and easy to follow?', value: clarityScore, set: setClarityScore },
+                  { label: 'Emotional Impact', hint: 'How emotionally resonant?', value: emotionalScore, set: setEmotionalScore },
+                  { label: 'Teaching Value', hint: 'How well does it illustrate a lesson?', value: teachingScore, set: setTeachingScore },
+                  { label: 'Authority Value', hint: 'How much does it build credibility?', value: authorityScore, set: setAuthorityScore },
+                  { label: 'Sales Value', hint: 'How well does it support persuasion?', value: salesScore, set: setSalesScore },
+                  { label: 'Relatability', hint: 'How relatable to a broad audience?', value: relatabilityScore, set: setRelatabilityScore },
+                  { label: 'Reusability', hint: 'How versatile across contexts?', value: reusabilityScore, set: setReusabilityScore },
+                ].map(({ label, hint, value, set }) => (
+                  <div key={label}>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">{label}</label>
+                    <p className="text-xs text-gray-400 mb-1">{hint}</p>
+                    <select value={value} onChange={(e) => set(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                      <option value="">—</option>
+                      {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                ))}
               </div>
             </div>
 
