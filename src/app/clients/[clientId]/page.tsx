@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { exportStoriesToDocx } from '@/lib/export'
 import type { Client, StoryVault, Story, Tag } from '@/lib/types'
 import { STORY_TYPES, USE_CASES, STORY_STATUSES } from '@/lib/types'
+import DropdownMenu from '@/components/DropdownMenu'
 
 type StoryWithTags = Story & { tags: Tag[] }
 
@@ -48,8 +49,9 @@ export default function ClientPage() {
   const [filterType, setFilterType] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
-  // add story form
+  // add/edit story form
   const [showForm, setShowForm] = useState(false)
+  const [editingStory, setEditingStory] = useState<StoryWithTags | null>(null)
   const [title, setTitle] = useState('')
   const [storyType, setStoryType] = useState('')
   const [transcription, setTranscription] = useState('')
@@ -132,46 +134,82 @@ export default function ClientPage() {
     setExportMode(false)
   }
 
-  async function addStory(e: React.FormEvent) {
+  async function saveStory(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim() || !vault) return
     setSaving(true)
 
-    const { data: storyData, error } = await supabase
-      .from('stories')
-      .insert({
-        vault_id: vault.id, title, story_type: storyType || null,
-        transcription: transcription || null, short_version: shortVersion || null,
-        long_version: longVersion || null, one_liner: oneLiner || null,
-        quotes: quotes || null, use_cases: useCases,
-        clarity_score: clarityScore ? parseInt(clarityScore) : null,
-        emotional_impact_score: emotionalScore ? parseInt(emotionalScore) : null,
-        status: storyStatus,
-      })
-      .select().single()
-
-    if (!error && storyData) {
-      const tagNames = tagInput.split(',').map((t) => t.trim()).filter(Boolean)
-      for (const tagName of tagNames) {
-        let { data: existingTag } = await supabase.from('tags').select('*').eq('name', tagName).maybeSingle()
-        let tagId = existingTag?.id
-        if (!tagId) {
-          const { data: newTag } = await supabase.from('tags').insert({ name: tagName }).select().single()
-          tagId = newTag?.id
-        }
-        if (tagId) await supabase.from('story_tags').insert({ story_id: storyData.id, tag_id: tagId })
-      }
-      resetForm()
-      setShowForm(false)
-      loadData()
+    const payload = {
+      title, story_type: storyType || null,
+      transcription: transcription || null, short_version: shortVersion || null,
+      long_version: longVersion || null, one_liner: oneLiner || null,
+      quotes: quotes || null, use_cases: useCases,
+      clarity_score: clarityScore ? parseInt(clarityScore) : null,
+      emotional_impact_score: emotionalScore ? parseInt(emotionalScore) : null,
+      status: storyStatus,
     }
+
+    let storyId: string | null = null
+
+    if (editingStory) {
+      const { error } = await supabase.from('stories').update(payload).eq('id', editingStory.id)
+      if (error) { alert(`Error updating story: ${error.message}`); setSaving(false); return }
+      storyId = editingStory.id
+      // replace tags: delete existing then re-insert
+      await supabase.from('story_tags').delete().eq('story_id', storyId)
+    } else {
+      const { data: storyData, error } = await supabase
+        .from('stories').insert({ vault_id: vault.id, ...payload }).select().single()
+      if (error || !storyData) { alert(`Error creating story: ${error?.message}`); setSaving(false); return }
+      storyId = storyData.id
+    }
+
+    const tagNames = tagInput.split(',').map((t) => t.trim()).filter(Boolean)
+    for (const tagName of tagNames) {
+      let { data: existingTag } = await supabase.from('tags').select('*').eq('name', tagName).maybeSingle()
+      let tagId = existingTag?.id
+      if (!tagId) {
+        const { data: newTag } = await supabase.from('tags').insert({ name: tagName }).select().single()
+        tagId = newTag?.id
+      }
+      if (tagId) await supabase.from('story_tags').insert({ story_id: storyId, tag_id: tagId })
+    }
+
+    resetForm()
+    setShowForm(false)
+    loadData()
     setSaving(false)
   }
 
   function resetForm() {
     setTitle(''); setStoryType(''); setTranscription(''); setShortVersion(''); setLongVersion('')
     setOneLiner(''); setQuotes(''); setUseCases([]); setClarityScore(''); setEmotionalScore('')
-    setStoryStatus('raw'); setTagInput('')
+    setStoryStatus('raw'); setTagInput(''); setEditingStory(null)
+  }
+
+  function openEditStory(story: StoryWithTags) {
+    setTitle(story.title)
+    setStoryType(story.story_type ?? '')
+    setTranscription(story.transcription ?? '')
+    setShortVersion(story.short_version ?? '')
+    setLongVersion(story.long_version ?? '')
+    setOneLiner(story.one_liner ?? '')
+    setQuotes(story.quotes ?? '')
+    setUseCases(story.use_cases ?? [])
+    setClarityScore(story.clarity_score?.toString() ?? '')
+    setEmotionalScore(story.emotional_impact_score?.toString() ?? '')
+    setStoryStatus(story.status)
+    setTagInput(story.tags.map((t) => t.name).join(', '))
+    setEditingStory(story)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function deleteStory(storyId: string) {
+    if (!confirm('Delete this story? This cannot be undone.')) return
+    const { error } = await supabase.from('stories').delete().eq('id', storyId)
+    if (error) { alert(`Error deleting story: ${error.message}`); return }
+    loadData()
   }
 
   const filteredStories = filterType ? stories.filter((s) => s.story_type === filterType) : stories
@@ -263,7 +301,7 @@ export default function ClientPage() {
             </button>
           )}
           <button
-            onClick={() => { setShowForm(!showForm); if (exportMode) setExportMode(false) }}
+            onClick={() => { resetForm(); setShowForm(!showForm); if (exportMode) setExportMode(false) }}
             className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -314,9 +352,9 @@ export default function ClientPage() {
 
       {/* Add story form */}
       {showForm && (
-        <form onSubmit={addStory} className="mb-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <form onSubmit={saveStory} className="mb-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="text-sm font-semibold text-gray-800">New Story</h3>
+            <h3 className="text-sm font-semibold text-gray-800">{editingStory ? 'Edit Story' : 'New Story'}</h3>
           </div>
           <div className="p-5 space-y-4">
             <div>
@@ -411,7 +449,7 @@ export default function ClientPage() {
               Cancel
             </button>
             <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors">
-              {saving ? 'Saving…' : 'Save Story'}
+              {saving ? 'Saving…' : editingStory ? 'Save Changes' : 'Save Story'}
             </button>
           </div>
         </form>
@@ -459,7 +497,7 @@ export default function ClientPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3 mb-1">
                         <h3 className="font-semibold text-gray-900 text-sm leading-snug">{story.title}</h3>
-                        <div className="flex gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {story.story_type && (
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_STYLES[story.story_type] ?? 'bg-gray-100 text-gray-600'}`}>
                               {story.story_type}
@@ -468,6 +506,12 @@ export default function ClientPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[story.status] ?? 'bg-gray-100 text-gray-600'}`}>
                             {story.status.replace(/_/g, ' ')}
                           </span>
+                          {!exportMode && (
+                            <DropdownMenu items={[
+                              { label: 'Edit', onClick: () => openEditStory(story) },
+                              { label: 'Delete', onClick: () => deleteStory(story.id), destructive: true },
+                            ]} />
+                          )}
                         </div>
                       </div>
 
