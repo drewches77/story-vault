@@ -69,7 +69,10 @@ export default function Sidebar() {
       .single()
 
     setSaving(false)
-    if (error || !data) return
+    if (error || !data) {
+      alert(`Error creating client: ${error?.message ?? 'No data returned'}`)
+      return
+    }
 
     setShowModal(false)
     resetForm()
