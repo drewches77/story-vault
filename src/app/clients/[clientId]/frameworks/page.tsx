@@ -15,11 +15,24 @@ const STATUS_STYLES: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-400',
 }
 
+const USE_CASE_OPTIONS = [
+  'Keynote',
+  'Webinar',
+  'Workshop',
+  'Sales call',
+  'Online course',
+  'Podcast',
+  'Book',
+  'Social media',
+  'Email',
+  'Consulting',
+]
+
 const EMPTY_FORM = {
   name: '',
   description: '',
   visual_metaphor: '',
-  best_use_cases: '',
+  best_use_cases: [] as string[],
   status: 'draft',
 }
 
@@ -62,7 +75,7 @@ export default function FrameworksPage() {
       name: fw.name,
       description: fw.description ?? '',
       visual_metaphor: fw.visual_metaphor ?? '',
-      best_use_cases: (fw.best_use_cases ?? []).join(', '),
+      best_use_cases: fw.best_use_cases ?? [],
       status: fw.status,
     })
     setShowForm(true)
@@ -84,7 +97,7 @@ export default function FrameworksPage() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       visual_metaphor: form.visual_metaphor.trim() || null,
-      best_use_cases: form.best_use_cases ? form.best_use_cases.split(',').map(s => s.trim()).filter(Boolean) : [],
+      best_use_cases: form.best_use_cases,
       status: form.status,
     }
 
@@ -194,14 +207,26 @@ export default function FrameworksPage() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Best Use Cases <span className="text-gray-400 font-normal">(comma-separated)</span></label>
-                <input
-                  value={form.best_use_cases}
-                  onChange={e => setForm(f => ({ ...f, best_use_cases: e.target.value }))}
-                  placeholder="keynote, webinar, sales call"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-2">Best Use Cases</label>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {USE_CASE_OPTIONS.map(option => (
+                    <label key={option} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={form.best_use_cases.includes(option)}
+                        onChange={e => {
+                          const next = e.target.checked
+                            ? [...form.best_use_cases, option]
+                            : form.best_use_cases.filter(v => v !== option)
+                          setForm(f => ({ ...f, best_use_cases: next }))
+                        }}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900">{option}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-1">
