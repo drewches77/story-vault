@@ -132,11 +132,14 @@ function validateRow(raw: Record<string, string>, index: number): ImportRow {
 
 export function parseFile(file: File): Promise<ImportRow[]> {
   return new Promise((resolve, reject) => {
+    const isCSV = file.name.toLowerCase().endsWith('.csv')
     const reader = new FileReader()
+
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target!.result as ArrayBuffer)
-        const wb = XLSX.read(data, { type: 'array' })
+        const wb = isCSV
+          ? XLSX.read(e.target!.result as string, { type: 'string' })
+          : XLSX.read(new Uint8Array(e.target!.result as ArrayBuffer), { type: 'array' })
         const ws = wb.Sheets[wb.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' })
         resolve(rows.map((row, i) => validateRow(row, i)))
@@ -144,7 +147,8 @@ export function parseFile(file: File): Promise<ImportRow[]> {
         reject(err)
       }
     }
+
     reader.onerror = reject
-    reader.readAsArrayBuffer(file)
+    isCSV ? reader.readAsText(file) : reader.readAsArrayBuffer(file)
   })
 }
