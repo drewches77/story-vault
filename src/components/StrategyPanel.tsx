@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import type { GeneratedAsset } from '@/lib/types'
 
 type Props = {
@@ -9,28 +8,7 @@ type Props = {
   onGenerated?: () => void
 }
 
-export default function StrategyPanel({ clientId, latestStrategy, onGenerated }: Props) {
-  const [generating, setGenerating] = useState(false)
-  const [expanded, setExpanded] = useState(false)
-
-  async function generate() {
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/ai/generate-social-strategy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error')
-      onGenerated?.()
-    } catch (err) {
-      alert(`Error generating strategy: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
+export default function StrategyPanel({ clientId, latestStrategy }: Props) {
   const content = latestStrategy?.content as any
 
   return (
@@ -41,18 +19,11 @@ export default function StrategyPanel({ clientId, latestStrategy, onGenerated }:
           <p className="text-xs text-gray-400 mt-0.5">AI-generated positioning and content direction</p>
         </div>
         <button
-          onClick={generate}
-          disabled={generating}
-          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5"
+          disabled
+          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-400 cursor-not-allowed font-medium"
+          title="AI coming soon"
         >
-          {generating ? (
-            <>
-              <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-              Generating…
-            </>
-          ) : (
-            latestStrategy ? 'Regenerate' : 'Generate Strategy'
-          )}
+          {latestStrategy ? 'Regenerate' : 'Generate Strategy'}
         </button>
       </div>
 
@@ -71,14 +42,12 @@ export default function StrategyPanel({ clientId, latestStrategy, onGenerated }:
                 Last updated {new Date(latestStrategy.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
-
             {content.positioning_summary && (
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Positioning</p>
                 <p className="text-sm text-gray-700">{content.positioning_summary}</p>
               </div>
             )}
-
             {content.content_pillars?.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Content Pillars</p>
@@ -91,62 +60,6 @@ export default function StrategyPanel({ clientId, latestStrategy, onGenerated }:
                 </div>
               </div>
             )}
-
-            {/* Expandable detail */}
-            <button
-              onClick={() => setExpanded(e => !e)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-            >
-              {expanded ? '▲ Hide details' : '▼ Show full strategy'}
-            </button>
-
-            {expanded && (
-              <div className="space-y-4 pt-2 border-t border-gray-100">
-                {content.platform_strategy && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Platform Strategy</p>
-                    <div className="space-y-2">
-                      {Object.entries(content.platform_strategy).map(([platform, strategy]: [string, any]) => (
-                        <div key={platform}>
-                          <p className="text-xs font-semibold text-gray-700 capitalize mb-0.5">{platform}</p>
-                          <p className="text-xs text-gray-600">{strategy}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {content.story_recommendations?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Story Recommendations</p>
-                    <div className="space-y-3">
-                      {content.story_recommendations.map((r: any, i: number) => (
-                        <div key={i} className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-xs font-semibold text-gray-800 mb-0.5">{r.story_title}</p>
-                          <p className="text-xs text-gray-600 mb-1">{r.recommended_use}</p>
-                          {r.suggested_hook && (
-                            <p className="text-xs italic text-indigo-700">&ldquo;{r.suggested_hook}&rdquo;</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {content.content_gaps?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Content Gaps</p>
-                    <ul className="space-y-1">
-                      {content.content_gaps.map((gap: string, i: number) => (
-                        <li key={i} className="text-xs text-gray-600 flex gap-1.5">
-                          <span className="text-amber-400 mt-0.5">•</span>{gap}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -157,7 +70,7 @@ export default function StrategyPanel({ clientId, latestStrategy, onGenerated }:
             </div>
             <p className="text-sm font-medium text-gray-700 mb-1">No strategy generated yet</p>
             <p className="text-xs text-gray-400 max-w-xs mx-auto">
-              Add stories, frameworks, and offers first, then click Generate Strategy for AI-powered positioning.
+              AI strategy generation coming soon. Add stories, frameworks, and offers first to get the best results.
             </p>
           </div>
         )}

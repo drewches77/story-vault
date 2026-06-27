@@ -68,10 +68,7 @@ export default function ProjectDetailPage() {
   const [offers, setOffers] = useState<Offer[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [outline, setOutline] = useState<any>(null)
-  const [generatingOutline, setGeneratingOutline] = useState(false)
-
-  const [activeSection, setActiveSection] = useState<'setup' | 'stories' | 'outline'>('setup')
+  const [activeSection, setActiveSection] = useState<'setup' | 'stories'>('setup')
   const [editingSetup, setEditingSetup] = useState(false)
   const [setupForm, setSetupForm] = useState({
     title: '',
@@ -146,16 +143,6 @@ export default function ProjectDetailPage() {
         .order('position')
       if (psData) setProjectStories(psData as ProjectStory[])
 
-      // Load existing outline
-      const { data: outlineData } = await supabase
-        .from('generated_assets')
-        .select('*')
-        .eq('project_id', projectId)
-        .in('asset_type', ['talk_outline', 'webinar_outline', 'sales_presentation_outline', 'email_campaign_plan'])
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (outlineData) setOutline(outlineData)
     }
 
     setLoading(false)
@@ -229,25 +216,6 @@ export default function ProjectDetailPage() {
     load()
   }
 
-  async function generateOutline() {
-    setGeneratingOutline(true)
-    try {
-      const res = await fetch('/api/ai/generate-project-outline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, clientId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error')
-      setActiveSection('outline')
-      load()
-    } catch (err) {
-      alert(`Error generating outline: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setGeneratingOutline(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -308,36 +276,20 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Section tabs */}
-      <div className="flex items-center justify-between mb-6 border-b border-gray-200">
-        <div className="flex gap-1">
-          {(['setup', 'stories', 'outline'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setActiveSection(s)}
-              className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-                activeSection === s
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {s === 'stories' ? `Stories (${projectStories.length})` : s === 'outline' ? `Outline${outline ? ' ✓' : ''}` : 'Setup'}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={generateOutline}
-          disabled={generatingOutline}
-          className="text-xs px-3 py-1.5 mb-1 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5"
-        >
-          {generatingOutline ? (
-            <>
-              <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-              Generating…
-            </>
-          ) : (
-            outline ? '⚡ Regenerate Outline' : '⚡ Generate Outline'
-          )}
-        </button>
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        {(['setup', 'stories'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setActiveSection(s)}
+            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+              activeSection === s
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {s === 'stories' ? `Stories (${projectStories.length})` : 'Setup'}
+          </button>
+        ))}
       </div>
 
       {/* Setup section */}
@@ -606,112 +558,6 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Outline section */}
-      {activeSection === 'outline' && (
-        <div className="space-y-4">
-          {!outline ? (
-            <div className="text-center py-16 bg-white border border-gray-200 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700 mb-1">No outline yet</p>
-              <p className="text-xs text-gray-400 max-w-xs mx-auto">Click "Generate Outline" to create an AI-powered structure for this project.</p>
-            </div>
-          ) : (
-            <>
-              {/* Readiness */}
-              {project?.readiness_score != null && (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-gray-900">{Math.round(project.readiness_score)}</p>
-                      <p className="text-xs text-gray-400">/ 100 readiness</p>
-                    </div>
-                    <div className="flex-1">
-                      <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${project.readiness_score >= 75 ? 'bg-emerald-500' : project.readiness_score >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
-                          style={{ width: `${project.readiness_score}%` }}
-                        />
-                      </div>
-                      {project.readiness_notes && (
-                        <p className="text-xs text-gray-600">{project.readiness_notes}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Executive summary */}
-              {(outline.content as any)?.executive_summary && (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Executive Summary</p>
-                  <p className="text-sm text-gray-700">{(outline.content as any).executive_summary}</p>
-                  {(outline.content as any).estimated_duration_minutes && (
-                    <p className="text-xs text-gray-400 mt-2">Estimated: {(outline.content as any).estimated_duration_minutes} minutes</p>
-                  )}
-                </div>
-              )}
-
-              {/* Sections */}
-              {(outline.content as any)?.sections?.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">Outline Sections</p>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {(outline.content as any).sections.map((section: any, idx: number) => (
-                      <div key={idx} className="p-5">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-gray-300 shrink-0">{idx + 1}</span>
-                            <h3 className="text-sm font-semibold text-gray-900">{section.title}</h3>
-                          </div>
-                          {section.duration_minutes && (
-                            <span className="text-xs text-gray-400 shrink-0">{section.duration_minutes} min</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mb-2 ml-5">{section.purpose}</p>
-                        {section.story && (
-                          <p className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full inline-block mb-2 ml-5 font-medium">
-                            Story: {section.story}
-                          </p>
-                        )}
-                        {section.key_points?.length > 0 && (
-                          <ul className="ml-5 space-y-1">
-                            {section.key_points.map((pt: string, i: number) => (
-                              <li key={i} className="text-xs text-gray-600 flex gap-1.5">
-                                <span className="text-gray-300 mt-0.5">•</span>{pt}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {section.transition && (
-                          <p className="text-xs italic text-gray-400 mt-2 ml-5">→ {section.transition}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* CTA Placement */}
-              {(outline.content as any)?.cta_placement && (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">CTA Placement</p>
-                  <p className="text-sm text-gray-700">{(outline.content as any).cta_placement}</p>
-                </div>
-              )}
-
-              <p className="text-xs text-gray-400 text-right">
-                Generated with Gemini 1.5 Flash · {new Date(outline.updated_at).toLocaleDateString()}
-              </p>
-            </>
-          )}
-        </div>
-      )}
     </main>
   )
 }

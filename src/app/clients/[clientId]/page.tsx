@@ -82,8 +82,6 @@ export default function ClientPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [exporting, setExporting] = useState(false)
 
-  // AI analysis
-  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set())
 
   async function loadData() {
     setLoading(true)
@@ -248,24 +246,6 @@ export default function ClientPage() {
     loadData()
   }
 
-  async function analyzeStory(storyId: string) {
-    setAnalyzingIds(prev => new Set(prev).add(storyId))
-    try {
-      const res = await fetch('/api/ai/analyze-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storyId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error')
-      loadData()
-    } catch (err) {
-      alert(`Error analyzing story: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setAnalyzingIds(prev => { const s = new Set(prev); s.delete(storyId); return s })
-    }
-  }
-
   const filteredStories = filterType ? stories.filter((s) => s.story_type === filterType) : stories
   const typesInUse = [...new Set(stories.map((s) => s.story_type).filter(Boolean))] as string[]
 
@@ -336,7 +316,7 @@ export default function ClientPage() {
             <StoryTypeChart stories={stories} />
           </div>
 
-          <StrategyPanel clientId={clientId} latestStrategy={latestStrategy} onGenerated={loadData} />
+          <StrategyPanel clientId={clientId} latestStrategy={latestStrategy} />
 
           <ProjectsPanel clientId={clientId} projects={projects} />
         </div>
@@ -602,15 +582,10 @@ export default function ClientPage() {
                             {story.status.replace(/_/g, ' ')}
                           </span>
                           {!exportMode && (
-                            analyzingIds.has(story.id) ? (
-                              <span className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <DropdownMenu items={[
-                                { label: 'Edit', onClick: () => openEditStory(story) },
-                                { label: 'Analyze with AI', onClick: () => analyzeStory(story.id) },
-                                { label: 'Delete', onClick: () => deleteStory(story.id), destructive: true },
-                              ]} />
-                            )
+                            <DropdownMenu items={[
+                              { label: 'Edit', onClick: () => openEditStory(story) },
+                              { label: 'Delete', onClick: () => deleteStory(story.id), destructive: true },
+                            ]} />
                           )}
                         </div>
                       </div>
