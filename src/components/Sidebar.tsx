@@ -50,14 +50,21 @@ export default function Sidebar() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  async function handleAddClient(e: React.FormEvent) {
+  async function handleAddClient(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!name.trim()) return
+    const fd = new FormData(e.currentTarget)
+    const resolvedName = (fd.get('name') as string) || name
+    if (!resolvedName.trim()) return
     setSaving(true)
+
+    const resolvedEmail = (fd.get('email') as string) || email
+    const resolvedCompany = (fd.get('company_name') as string) || companyName
+    const resolvedFramework = (fd.get('main_framework') as string) || mainFramework
+    const resolvedVoice = (fd.get('brand_voice') as string) || brandVoice
 
     const { data, error } = await supabase
       .from('clients')
-      .insert({ name, email: email || null, company_name: companyName || null, main_framework: mainFramework || null, brand_voice: brandVoice || null, status })
+      .insert({ name: resolvedName, email: resolvedEmail || null, company_name: resolvedCompany || null, main_framework: resolvedFramework || null, brand_voice: resolvedVoice || null, status })
       .select()
       .single()
 
@@ -163,28 +170,28 @@ export default function Sidebar() {
             <form onSubmit={handleAddClient} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required autoFocus />
+                <input name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required autoFocus />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                  <input name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
-                  <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                  <input name="company_name" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Main Framework</label>
-                <input type="text" value={mainFramework} onChange={(e) => setMainFramework(e.target.value)} placeholder="e.g. The Four C's" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                <input name="main_framework" type="text" value={mainFramework} onChange={(e) => setMainFramework(e.target.value)} placeholder="e.g. The Four C's" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Brand Voice</label>
-                <textarea value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} placeholder="e.g. Direct, confident, no jargon" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none" />
+                <textarea name="brand_voice" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} placeholder="e.g. Direct, confident, no jargon" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none" />
               </div>
 
               <div>
