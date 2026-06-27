@@ -2,31 +2,34 @@
 
 import { useState } from 'react'
 
-const EXTRACTION_PROMPT = `You are a story extraction assistant for The Authority Forge. Your job is to extract and structure a personal story from a client transcript or audio summary.
+const EXTRACTION_PROMPT = `You are a story extraction assistant for The Authority Forge. Your job is to read a client transcript or document and extract EVERY distinct personal story, anecdote, or experience mentioned — not just the most prominent one.
 
-Extract the following fields and return them as a JSON object:
+A "story" is any moment where the client describes something that happened to them: a challenge, a win, a lesson, a client result, a turning point, a realization, or a defining experience. Even brief mentions count if they contain a usable narrative.
 
-{
-  "title": "A short, memorable title for the story (5–10 words)",
-  "story_type": "One of: Origin, Identity, Failure, Discovery, Client, Credibility, Vision",
-  "short_version": "A 2–3 sentence summary of the story. This is the punchy, social-ready version.",
-  "long_version": "The full story with narrative arc: setup, conflict/tension, resolution, and lesson or takeaway. 150–300 words.",
-  "core_lesson": "The single key insight or lesson the story teaches. One sentence.",
-  "memorable_quote": "A direct quote or highly quotable line from the story. If none exists, write one that captures the essence.",
-  "use_cases": ["keynote", "webinar", "sales call", "social post", "email", "podcast"],
-  "tags": ["tag1", "tag2", "tag3"],
+Return a JSON array containing one object per story:
 
-  "scores": {
-    "clarity": <1–5>,
-    "emotional_impact": <1–5>,
-    "teaching_value": <1–5>,
-    "authority_value": <1–5>,
-    "sales_value": <1–5>,
-    "relatability": <1–5>,
-    "reusability": <1–5>,
-    "overall_utility": <1–5>
+[
+  {
+    "title": "A short, memorable title for the story (5–10 words)",
+    "story_type": "One of: Origin, Identity, Failure, Discovery, Client, Credibility, Vision",
+    "short_version": "A 2–3 sentence summary. This is the punchy, social-ready version.",
+    "long_version": "The full story with narrative arc: setup, conflict/tension, resolution, and lesson or takeaway. 150–300 words.",
+    "core_lesson": "The single key insight or lesson the story teaches. One sentence.",
+    "memorable_quote": "A direct quote or highly quotable line. If none exists, write one that captures the essence.",
+    "use_cases": ["keynote", "webinar", "sales call", "social post", "email", "podcast"],
+    "tags": ["tag1", "tag2", "tag3"],
+    "scores": {
+      "clarity": <1–5>,
+      "emotional_impact": <1–5>,
+      "teaching_value": <1–5>,
+      "authority_value": <1–5>,
+      "sales_value": <1–5>,
+      "relatability": <1–5>,
+      "reusability": <1–5>,
+      "overall_utility": <1–5>
+    }
   }
-}
+]
 
 ---
 
@@ -54,14 +57,15 @@ Rate each dimension from 1 (weak) to 5 (exceptional):
 
 INSTRUCTIONS
 
-1. Read the transcript or audio summary carefully.
-2. Identify the most compelling story or moment.
-3. Extract and write all fields above.
-4. Score each dimension honestly. Avoid defaulting to 3 — use the full range.
-5. Return only valid JSON. No markdown, no explanation outside the JSON.
+1. Read the entire transcript or document carefully before extracting anything.
+2. Identify ALL distinct stories, anecdotes, and experiences — aim to find every usable moment, not just the highlights.
+3. Extract and complete all fields for each story.
+4. Score each story independently and honestly. Avoid defaulting to 3 — use the full range.
+5. Return only a valid JSON array. No markdown, no explanation outside the JSON.
 6. If a field cannot be determined from the source material, use null.
 7. For use_cases, only include contexts where this story would genuinely work well.
-8. Tags should be 3–6 keywords that describe the story's themes (e.g., "resilience", "leadership", "failure", "client result").`
+8. Tags should be 3–6 keywords describing the story's themes (e.g., "resilience", "leadership", "failure", "client result").
+9. Do not merge separate stories into one. If two things happened at different times or for different reasons, they are separate stories.`
 
 export default function PromptsPage() {
   const [copied, setCopied] = useState(false)
@@ -83,7 +87,7 @@ export default function PromptsPage() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Story Extraction Prompt</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Paste this into ChatGPT or Claude along with a transcript to extract and score a story.</p>
+            <p className="text-xs text-gray-400 mt-0.5">Paste this into ChatGPT or Claude along with a transcript to extract and score all stories in the document.</p>
           </div>
           <button
             onClick={copyPrompt}
@@ -121,7 +125,7 @@ export default function PromptsPage() {
           <li>Copy the prompt above.</li>
           <li>Open ChatGPT or Claude in a new chat.</li>
           <li>Paste the prompt, then paste the client transcript or audio summary below it.</li>
-          <li>Copy the returned JSON and paste it into the story import form (coming soon) or manually fill in the story fields.</li>
+          <li>Copy the returned JSON array and paste it into the Import Stories dialog using the "Paste JSON" tab.</li>
         </ol>
       </div>
     </main>
