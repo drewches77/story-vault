@@ -118,7 +118,7 @@ Return JSON with exactly this structure:
         .update({
           content: outline,
           plain_text: outline.executive_summary,
-          model_used: 'gemini-1.5-flash',
+          model_used: 'gemini-2.0-flash',
           status: 'draft',
           updated_at: new Date().toISOString(),
         })
@@ -134,7 +134,7 @@ Return JSON with exactly this structure:
           title: `Outline — ${project.title}`,
           content: outline,
           plain_text: outline.executive_summary,
-          model_used: 'gemini-1.5-flash',
+          model_used: 'gemini-2.0-flash',
           status: 'draft',
         })
       assetError = res.error

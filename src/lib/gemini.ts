@@ -1,4 +1,4 @@
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.0-flash'
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
 
 export async function geminiRaw(prompt: string): Promise<string> {

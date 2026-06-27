@@ -111,7 +111,7 @@ Include 3-5 content pillars and recommendations for the top 3-5 most impactful s
         .update({
           content: strategy,
           plain_text: strategy.positioning_summary,
-          model_used: 'gemini-1.5-flash',
+          model_used: 'gemini-2.0-flash',
           status: 'draft',
           updated_at: new Date().toISOString(),
         })
@@ -126,7 +126,7 @@ Include 3-5 content pillars and recommendations for the top 3-5 most impactful s
           title: `Social Strategy — ${client.name}`,
           content: strategy,
           plain_text: strategy.positioning_summary,
-          model_used: 'gemini-1.5-flash',
+          model_used: 'gemini-2.0-flash',
           status: 'draft',
         })
       assetError = res.error
