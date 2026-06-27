@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import type { Project } from '@/lib/types'
 
 type Props = {
@@ -39,13 +40,12 @@ export default function ProjectsPanel({ clientId, projects }: Props) {
           <h2 className="text-sm font-semibold text-gray-900">Projects</h2>
           <p className="text-xs text-gray-400 mt-0.5">Talks, webinars, presentations, and campaigns</p>
         </div>
-        <button
-          disabled
-          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-400 cursor-not-allowed font-medium"
-          title="Coming in Phase 4"
+        <Link
+          href={`/clients/${clientId}/projects`}
+          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors"
         >
           + New Project
-        </button>
+        </Link>
       </div>
 
       <div className="px-5 py-4">
@@ -57,14 +57,20 @@ export default function ProjectsPanel({ clientId, projects }: Props) {
               </svg>
             </div>
             <p className="text-sm font-medium text-gray-700 mb-1">No projects yet</p>
-            <p className="text-xs text-gray-400 max-w-xs mx-auto">
-              Project builder coming soon. You'll be able to create talks, webinars, presentations, and email campaigns.
+            <p className="text-xs text-gray-400 max-w-xs mx-auto mb-3">
+              Build talks, webinars, presentations, and email campaigns from your story vault.
             </p>
+            <Link
+              href={`/clients/${clientId}/projects`}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors"
+            >
+              Start a Project
+            </Link>
           </div>
         ) : (
           <div className="space-y-2">
             {activeProjects.map((project) => (
-              <div key={project.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+              <Link key={project.id} href={`/clients/${clientId}/projects/${project.id}`} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_STYLES[project.project_type] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -83,7 +89,7 @@ export default function ProjectsPanel({ clientId, projects }: Props) {
                     <p className="text-xs text-gray-400">readiness</p>
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         )}

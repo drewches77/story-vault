@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Stories', href: '' },
   { label: 'Frameworks', href: '/frameworks' },
   { label: 'Offers', href: '/offers' },
+  { label: 'Projects', href: '/projects' },
 ]
 
 type Props = {
@@ -21,8 +22,9 @@ export default function ClientTabNav({ clientId, activeStoriesTab = 'overview', 
   const base = `/clients/${clientId}`
 
   function isActive(tabHref: string, label: string) {
-    if (label === 'Frameworks') return pathname === `${base}/frameworks`
-    if (label === 'Offers') return pathname === `${base}/offers`
+    if (label === 'Frameworks') return pathname.startsWith(`${base}/frameworks`)
+    if (label === 'Offers') return pathname.startsWith(`${base}/offers`)
+    if (label === 'Projects') return pathname.startsWith(`${base}/projects`)
     if (label === 'Overview') return pathname === base && activeStoriesTab === 'overview'
     if (label === 'Stories') return pathname === base && activeStoriesTab === 'stories'
     return false
