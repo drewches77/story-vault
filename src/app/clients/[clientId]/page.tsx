@@ -635,6 +635,12 @@ export default function ClientPage() {
                       {/* Expanded content */}
                       {expanded && (
                         <div className="mt-4 space-y-3 pt-4 border-t border-gray-100">
+                          {story.short_version && (
+                            <div>
+                              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Short Version</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{story.short_version}</p>
+                            </div>
+                          )}
                           {story.long_version && (
                             <div>
                               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Long Version</p>

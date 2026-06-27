@@ -32,7 +32,7 @@ export default function StoryTypeChart({ stories }: Props) {
     type,
     count: stories.filter((s) => s.story_type === type).length,
     color: TYPE_COLORS[type],
-  })).filter((d) => d.count > 0)
+  }))
 
   const uncategorized = stories.filter((s) => !s.story_type).length
 
@@ -66,7 +66,7 @@ export default function StoryTypeChart({ stories }: Props) {
   }
 
   let currentAngle = 0
-  const segments = counts.map(({ type, count, color }) => {
+  const segments = counts.filter(d => d.count > 0).map(({ type, count, color }) => {
     const angle = (count / total) * 360
     const path = arcPath(currentAngle, currentAngle + angle - 0.5, R, r)
     currentAngle += angle
@@ -93,7 +93,7 @@ export default function StoryTypeChart({ stories }: Props) {
       {/* Legend */}
       <div className="flex-1 grid grid-cols-2 gap-x-6 gap-y-2.5 w-full">
         {counts.map(({ type, count }) => (
-          <div key={type} className="flex items-center justify-between gap-2">
+          <div key={type} className={`flex items-center justify-between gap-2 ${count === 0 ? 'opacity-40' : ''}`}>
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLORS[type] }} />
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_BG[type]}`}>{type}</span>

@@ -4,31 +4,9 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Client, Framework } from '@/lib/types'
-import { FRAMEWORK_TYPES, FRAMEWORK_STATUSES } from '@/lib/types'
+import { FRAMEWORK_STATUSES } from '@/lib/types'
 import ClientTabNav from '@/components/ClientTabNav'
 import DropdownMenu from '@/components/DropdownMenu'
-
-const TYPE_LABELS: Record<string, string> = {
-  authority: 'Authority',
-  client_ip: 'Client IP',
-  talk_framework: 'Talk Framework',
-  webinar_framework: 'Webinar Framework',
-  sales_framework: 'Sales Framework',
-  content_framework: 'Content Framework',
-  offer_framework: 'Offer Framework',
-  other: 'Other',
-}
-
-const TYPE_STYLES: Record<string, string> = {
-  authority: 'bg-purple-50 text-purple-700',
-  client_ip: 'bg-blue-50 text-blue-700',
-  talk_framework: 'bg-teal-50 text-teal-700',
-  webinar_framework: 'bg-cyan-50 text-cyan-700',
-  sales_framework: 'bg-emerald-50 text-emerald-700',
-  content_framework: 'bg-orange-50 text-orange-700',
-  offer_framework: 'bg-amber-50 text-amber-700',
-  other: 'bg-gray-100 text-gray-600',
-}
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-500',
@@ -39,7 +17,6 @@ const STATUS_STYLES: Record<string, string> = {
 
 const EMPTY_FORM = {
   name: '',
-  framework_type: '',
   description: '',
   visual_metaphor: '',
   best_use_cases: '',
@@ -83,7 +60,6 @@ export default function FrameworksPage() {
     setEditing(fw)
     setForm({
       name: fw.name,
-      framework_type: fw.framework_type ?? '',
       description: fw.description ?? '',
       visual_metaphor: fw.visual_metaphor ?? '',
       best_use_cases: (fw.best_use_cases ?? []).join(', '),
@@ -106,7 +82,6 @@ export default function FrameworksPage() {
     const payload = {
       client_id: clientId,
       name: form.name.trim(),
-      framework_type: form.framework_type || null,
       description: form.description.trim() || null,
       visual_metaphor: form.visual_metaphor.trim() || null,
       best_use_cases: form.best_use_cases ? form.best_use_cases.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -187,19 +162,6 @@ export default function FrameworksPage() {
                   placeholder="e.g. The Authority Triangle"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={form.framework_type}
-                  onChange={e => setForm(f => ({ ...f, framework_type: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">— Select type —</option>
-                  {FRAMEWORK_TYPES.map(t => (
-                    <option key={t} value={t}>{TYPE_LABELS[t]}</option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
@@ -323,11 +285,6 @@ function FrameworkCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3 className="text-sm font-semibold text-gray-900">{fw.name}</h3>
-            {fw.framework_type && (
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_STYLES[fw.framework_type] ?? 'bg-gray-100 text-gray-600'}`}>
-                {TYPE_LABELS[fw.framework_type]}
-              </span>
-            )}
             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[fw.status] ?? 'bg-gray-100 text-gray-500'}`}>
               {fw.status}
             </span>

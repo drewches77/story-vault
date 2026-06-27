@@ -3,6 +3,16 @@
 import type { Story, Project, GeneratedAsset } from '@/lib/types'
 import { STORY_TYPES } from '@/lib/types'
 
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  Origin:      'Where you started and why',
+  Identity:    'Who you are and what you stand for',
+  Failure:     'A setback that led to growth',
+  Discovery:   'A breakthrough insight or lesson',
+  Client:      'A client transformation or result',
+  Credibility: 'Proof of expertise and authority',
+  Vision:      'Where you\'re going and why it matters',
+}
+
 type Props = {
   stories: Story[]
   projects: Project[]
@@ -87,8 +97,8 @@ export default function DashboardCards({ stories, projects, latestStrategy, avgU
       <Card
         label="Social Strategy"
         value={strategyLabel}
-        sub={latestStrategy ? `Updated ${new Date(latestStrategy.updated_at).toLocaleDateString()}` : 'Generate from Overview'}
-        accent={strategyAccent as any}
+        sub={latestStrategy ? `Updated ${new Date(latestStrategy.updated_at).toLocaleDateString()}` : 'Coming soon — AI paused'}
+        accent="gray"
       />
       <Card
         label="Active Projects"
@@ -99,7 +109,7 @@ export default function DashboardCards({ stories, projects, latestStrategy, avgU
       <Card
         label="Biggest Gap"
         value={biggestGap}
-        sub={missingTypes.length > 0 ? 'Missing story type' : 'Least covered type'}
+        sub={TYPE_DESCRIPTIONS[biggestGap] ?? (missingTypes.length > 0 ? 'Missing story type' : 'Least covered type')}
         accent="amber"
       />
       <Card
