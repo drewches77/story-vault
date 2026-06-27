@@ -136,14 +136,21 @@ export function parseFile(file: File): Promise<ImportRow[]> {
 
   if (isCSV) {
     return new Promise((resolve, reject) => {
-      Papa.parse<Record<string, string>>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          resolve(results.data.map((row, i) => validateRow(row, i)))
-        },
-        error: reject,
-      })
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const text = e.target!.result as string
+          const result = Papa.parse<Record<string, string>>(text, {
+            header: true,
+            skipEmptyLines: true,
+          })
+          resolve(result.data.map((row, i) => validateRow(row, i)))
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = reject
+      reader.readAsText(file)
     })
   }
 

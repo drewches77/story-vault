@@ -32,8 +32,8 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
     try {
       const parsed = await parseFile(file)
       setRows(parsed)
-    } catch {
-      alert('Could not parse file. Make sure it is a valid .xlsx or .csv file.')
+    } catch (err) {
+      alert(`Could not parse file: ${err instanceof Error ? err.message : String(err)}`)
     }
     setParsing(false)
   }
