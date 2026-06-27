@@ -90,27 +90,32 @@ export function downloadTemplate() {
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), 'StoryVault-Import-Template.xlsx')
 }
 
-function validateRow(raw: Record<string, string>, index: number): ImportRow {
+function str(val: unknown): string {
+  if (val === null || val === undefined) return ''
+  return String(val).trim()
+}
+
+function validateRow(raw: Record<string, unknown>, index: number): ImportRow {
   const errors: string[] = []
-  const title = raw['title']?.trim() ?? ''
+  const title = str(raw['title'])
   if (!title) errors.push('Title is required')
 
-  const storyType = raw['story_type']?.trim() ?? ''
+  const storyType = str(raw['story_type'])
   if (storyType && !STORY_TYPES.includes(storyType as any)) {
     errors.push(`Invalid story_type "${storyType}" — must be one of: ${STORY_TYPES.join(', ')}`)
   }
 
-  const status = raw['status']?.trim() || 'raw'
+  const status = str(raw['status']) || 'raw'
   if (!STORY_STATUSES.includes(status as any)) {
     errors.push(`Invalid status "${status}" — must be one of: ${STORY_STATUSES.join(', ')}`)
   }
 
-  const clarityScore = raw['clarity_score']?.trim() ?? ''
+  const clarityScore = str(raw['clarity_score'])
   if (clarityScore && (isNaN(Number(clarityScore)) || Number(clarityScore) < 1 || Number(clarityScore) > 5)) {
     errors.push('clarity_score must be 1–5')
   }
 
-  const emotionalScore = raw['emotional_impact_score']?.trim() ?? ''
+  const emotionalScore = str(raw['emotional_impact_score'])
   if (emotionalScore && (isNaN(Number(emotionalScore)) || Number(emotionalScore) < 1 || Number(emotionalScore) > 5)) {
     errors.push('emotional_impact_score must be 1–5')
   }
@@ -119,14 +124,14 @@ function validateRow(raw: Record<string, string>, index: number): ImportRow {
     title,
     story_type: storyType,
     status,
-    one_liner: raw['one_liner']?.trim() ?? '',
-    short_version: raw['short_version']?.trim() ?? '',
-    long_version: raw['long_version']?.trim() ?? '',
-    quotes: raw['quotes']?.trim() ?? '',
-    use_cases: raw['use_cases']?.trim() ?? '',
+    one_liner: str(raw['one_liner']),
+    short_version: str(raw['short_version']),
+    long_version: str(raw['long_version']),
+    quotes: str(raw['quotes']),
+    use_cases: str(raw['use_cases']),
     clarity_score: clarityScore,
     emotional_impact_score: emotionalScore,
-    tags: raw['tags']?.trim() ?? '',
+    tags: str(raw['tags']),
     _errors: errors,
   }
 }
@@ -140,7 +145,7 @@ export function parseFile(file: File): Promise<ImportRow[]> {
       reader.onload = (e) => {
         try {
           const text = e.target!.result as string
-          const result = Papa.parse<Record<string, string>>(text, {
+          const result = Papa.parse<Record<string, unknown>>(text, {
             header: true,
             skipEmptyLines: true,
           })
