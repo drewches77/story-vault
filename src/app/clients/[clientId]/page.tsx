@@ -14,7 +14,14 @@ import StrategyPanel from '@/components/StrategyPanel'
 import ProjectsPanel from '@/components/ProjectsPanel'
 import ClientTabNav from '@/components/ClientTabNav'
 
-type StoryWithTags = Story & { tags: Tag[] }
+type StoryWithTags = Story & {
+  tags: Tag[]
+  teaching_value_score: number | null
+  authority_value_score: number | null
+  sales_value_score: number | null
+  relatability_score: number | null
+  reusability_score: number | null
+}
 
 const STATUS_STYLES: Record<string, string> = {
   raw: 'bg-gray-100 text-gray-600',
@@ -33,10 +40,11 @@ const TYPE_STYLES: Record<string, string> = {
 }
 
 function ScoreDots({ value, max = 5 }: { value: number; max?: number }) {
+  const color = value <= 2 ? 'bg-red-400' : value === 3 ? 'bg-amber-400' : 'bg-emerald-400'
   return (
     <span className="flex gap-0.5">
       {Array.from({ length: max }).map((_, i) => (
-        <span key={i} className={`w-1.5 h-1.5 rounded-full ${i < value ? 'bg-indigo-400' : 'bg-gray-200'}`} />
+        <span key={i} className={`w-1.5 h-1.5 rounded-full ${i < value ? color : 'bg-gray-200'}`} />
       ))}
     </span>
   )
@@ -111,25 +119,34 @@ export default function ClientPage() {
         .order('created_at', { ascending: false })
 
       if (storyData) {
-        const mapped = storyData.map((s: any) => ({
-          ...s,
-          tags: (s.story_tags || []).map((st: any) => st.tags).filter(Boolean),
-        }))
+        const storyIds = storyData.map((s: any) => s.id)
+
+        const { data: scoreData } = storyIds.length > 0
+          ? await supabase.from('story_scores').select('*').in('story_id', storyIds)
+          : { data: [] }
+
+        const scoreMap: Record<string, any> = {}
+        for (const sc of scoreData ?? []) scoreMap[sc.story_id] = sc
+
+        const mapped = storyData.map((s: any) => {
+          const sc = scoreMap[s.id]
+          return {
+            ...s,
+            tags: (s.story_tags || []).map((st: any) => st.tags).filter(Boolean),
+            teaching_value_score: sc?.teaching_value_score ?? null,
+            authority_value_score: sc?.authority_value_score ?? null,
+            sales_value_score: sc?.sales_value_score ?? null,
+            relatability_score: sc?.relatability_score ?? null,
+            reusability_score: sc?.reusability_score ?? null,
+          }
+        })
         setStories(mapped)
         setSelectedIds(new Set(mapped.map((s: StoryWithTags) => s.id)))
 
-        // Load utility scores
-        const storyIds = mapped.map((s: StoryWithTags) => s.id)
-        if (storyIds.length > 0) {
-          const { data: scoreData } = await supabase
-            .from('story_scores')
-            .select('overall_utility_score')
-            .in('story_id', storyIds)
-          if (scoreData && scoreData.length > 0) {
-            const scores = scoreData.map((s: any) => s.overall_utility_score).filter((s: any) => s != null)
-            if (scores.length > 0) {
-              setAvgUtilityScore(scores.reduce((a: number, b: number) => a + b, 0) / scores.length)
-            }
+        if (scoreData && scoreData.length > 0) {
+          const utils = scoreData.map((s: any) => s.overall_utility_score).filter((s: any) => s != null)
+          if (utils.length > 0) {
+            setAvgUtilityScore(utils.reduce((a: number, b: number) => a + b, 0) / utils.length)
           }
         }
       }
@@ -634,22 +651,29 @@ export default function ClientPage() {
                       )}
 
 
-                      {(story.clarity_score || story.emotional_impact_score) && (
-                        <div className="flex items-center gap-4 mb-3">
-                          {story.clarity_score && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-gray-400">Clarity</span>
-                              <ScoreDots value={story.clarity_score} />
-                            </div>
-                          )}
-                          {story.emotional_impact_score && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-gray-400">Emotional</span>
-                              <ScoreDots value={story.emotional_impact_score} />
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {(() => {
+                        const scorePairs: [string, number | null][] = [
+                          ['Clarity', story.clarity_score],
+                          ['Emotional', story.emotional_impact_score],
+                          ['Teaching', story.teaching_value_score],
+                          ['Authority', story.authority_value_score],
+                          ['Sales', story.sales_value_score],
+                          ['Relatability', story.relatability_score],
+                          ['Reusability', story.reusability_score],
+                        ]
+                        const visible = scorePairs.filter(([, v]) => v != null)
+                        if (!visible.length) return null
+                        return (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3">
+                            {visible.map(([label, val]) => (
+                              <div key={label} className="flex items-center gap-1.5">
+                                <span className="text-xs text-gray-400">{label}</span>
+                                <ScoreDots value={val!} />
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
 
                       {story.use_cases?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mb-2">
