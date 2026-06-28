@@ -176,8 +176,8 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
               sales_value_score: row.sales_value_score,
               relatability_score: row.relatability_score,
               reusability_score: row.reusability_score,
-              overall_utility_score: row.overall_utility_score,
-            })
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'story_id' })
           }
 
           // Tags
