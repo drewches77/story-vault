@@ -5,22 +5,30 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Client, Project, Framework, Offer } from '@/lib/types'
-import { PROJECT_TYPES, PROJECT_STATUSES } from '@/lib/types'
+import { PROJECT_STATUSES, TALK_TYPES, SOCIAL_MEDIA_TYPES } from '@/lib/types'
 import ClientTabNav from '@/components/ClientTabNav'
 import DropdownMenu from '@/components/DropdownMenu'
 
 const TYPE_LABELS: Record<string, string> = {
-  talk: 'Talk',
+  keynote: 'Keynote',
   webinar: 'Webinar',
   sales_presentation: 'Sales Presentation',
+  workshop: 'Workshop',
+  weekly: 'Weekly Content',
   email_campaign: 'Email Campaign',
+  launch_campaign: 'Launch Campaign',
+  talk: 'Talk',
 }
 
 const TYPE_STYLES: Record<string, string> = {
-  talk: 'bg-purple-50 text-purple-700',
+  keynote: 'bg-purple-50 text-purple-700',
   webinar: 'bg-indigo-50 text-indigo-700',
   sales_presentation: 'bg-teal-50 text-teal-700',
-  email_campaign: 'bg-orange-50 text-orange-700',
+  workshop: 'bg-violet-50 text-violet-700',
+  weekly: 'bg-orange-50 text-orange-700',
+  email_campaign: 'bg-amber-50 text-amber-700',
+  launch_campaign: 'bg-rose-50 text-rose-700',
+  talk: 'bg-purple-50 text-purple-700',
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -32,8 +40,9 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 const EMPTY_FORM = {
+  category: 'talk',
+  project_type: 'keynote',
   title: '',
-  project_type: 'talk',
   status: 'draft',
   audience: '',
   goal: '',
@@ -77,23 +86,30 @@ export default function ProjectsPage() {
 
   useEffect(() => { load() }, [clientId])
 
+  function setCategory(cat: string) {
+    const defaultType = cat === 'talk' ? 'keynote' : 'weekly'
+    setForm(f => ({ ...f, category: cat, project_type: defaultType }))
+  }
+
   async function createProject(e: React.FormEvent) {
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
 
+    const isTalk = form.category === 'talk'
     const payload = {
       client_id: clientId,
+      category: form.category,
       title: form.title.trim(),
       project_type: form.project_type,
       status: form.status,
       audience: form.audience.trim() || null,
       goal: form.goal.trim() || null,
-      cta: form.cta.trim() || null,
-      offer_id: form.offer_id || null,
-      primary_framework_id: form.primary_framework_id || null,
-      length_minutes: form.length_minutes ? parseInt(form.length_minutes) : null,
-      tone: form.tone.trim() || null,
+      cta: isTalk ? form.cta.trim() || null : null,
+      offer_id: isTalk ? form.offer_id || null : null,
+      primary_framework_id: isTalk ? form.primary_framework_id || null : null,
+      length_minutes: isTalk && form.length_minutes ? parseInt(form.length_minutes) : null,
+      tone: isTalk ? form.tone.trim() || null : null,
     }
 
     const { data, error } = await supabase.from('projects').insert(payload).select().single()
@@ -127,6 +143,7 @@ export default function ProjectsPage() {
 
   const active = projects.filter(p => p.status !== 'archived')
   const archived = projects.filter(p => p.status === 'archived')
+  const isTalkForm = form.category === 'talk'
 
   return (
     <main className="max-w-3xl mx-auto px-8 py-8">
@@ -152,6 +169,34 @@ export default function ProjectsPage() {
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mb-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">New Project</h2>
+
+          {/* Category picker */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { value: 'talk', label: 'Talk', desc: 'Keynote, webinar, sales presentation, or workshop', icon: 'M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3' },
+              { value: 'social_media', label: 'Social Media', desc: 'Weekly content, email campaigns, or launches', icon: 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z' },
+            ].map(cat => (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() => setCategory(cat.value)}
+                className={`flex flex-col items-start gap-1 p-4 rounded-xl border-2 text-left transition-all ${
+                  form.category === cat.value
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-4 h-4 ${form.category === cat.value ? 'text-indigo-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={cat.icon} />
+                  </svg>
+                  <span className={`text-sm font-semibold ${form.category === cat.value ? 'text-indigo-700' : 'text-gray-700'}`}>{cat.label}</span>
+                </div>
+                <p className="text-xs text-gray-400 leading-snug">{cat.desc}</p>
+              </button>
+            ))}
+          </div>
+
           <form onSubmit={createProject} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -160,7 +205,7 @@ export default function ProjectsPage() {
                   required
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Keynote: From Burnout to Breakthrough"
+                  placeholder={isTalkForm ? 'e.g. Keynote: From Burnout to Breakthrough' : 'e.g. Week of June 30 — Authority Content'}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -171,7 +216,7 @@ export default function ProjectsPage() {
                   onChange={e => setForm(f => ({ ...f, project_type: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  {PROJECT_TYPES.map(t => (
+                  {(isTalkForm ? TALK_TYPES : SOCIAL_MEDIA_TYPES).map(t => (
                     <option key={t} value={t}>{TYPE_LABELS[t]}</option>
                   ))}
                 </select>
@@ -193,7 +238,7 @@ export default function ProjectsPage() {
                 <input
                   value={form.audience}
                   onChange={e => setForm(f => ({ ...f, audience: e.target.value }))}
-                  placeholder="Who will be in the room?"
+                  placeholder="Who is this for?"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -202,70 +247,76 @@ export default function ProjectsPage() {
                 <input
                   value={form.goal}
                   onChange={e => setForm(f => ({ ...f, goal: e.target.value }))}
-                  placeholder="What should the audience walk away with?"
+                  placeholder={isTalkForm ? 'What should the audience walk away with?' : 'What should this content achieve?'}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Primary Framework</label>
-                <select
-                  value={form.primary_framework_id}
-                  onChange={e => setForm(f => ({ ...f, primary_framework_id: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">— None —</option>
-                  {frameworks.map(fw => <option key={fw.id} value={fw.id}>{fw.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Linked Offer</label>
-                <select
-                  value={form.offer_id}
-                  onChange={e => setForm(f => ({ ...f, offer_id: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">— None —</option>
-                  {offers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Length (minutes)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.length_minutes}
-                  onChange={e => setForm(f => ({ ...f, length_minutes: e.target.value }))}
-                  placeholder="45"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Tone</label>
-                <input
-                  value={form.tone}
-                  onChange={e => setForm(f => ({ ...f, tone: e.target.value }))}
-                  placeholder="e.g. Motivational, Educational"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Call to Action</label>
-                <input
-                  value={form.cta}
-                  onChange={e => setForm(f => ({ ...f, cta: e.target.value }))}
-                  placeholder="What do you want the audience to do next?"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+
+              {isTalkForm && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Primary Framework</label>
+                    <select
+                      value={form.primary_framework_id}
+                      onChange={e => setForm(f => ({ ...f, primary_framework_id: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">— None —</option>
+                      {frameworks.map(fw => <option key={fw.id} value={fw.id}>{fw.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Linked Offer</label>
+                    <select
+                      value={form.offer_id}
+                      onChange={e => setForm(f => ({ ...f, offer_id: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">— None —</option>
+                      {offers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Length (minutes)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.length_minutes}
+                      onChange={e => setForm(f => ({ ...f, length_minutes: e.target.value }))}
+                      placeholder="45"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Tone</label>
+                    <input
+                      value={form.tone}
+                      onChange={e => setForm(f => ({ ...f, tone: e.target.value }))}
+                      placeholder="e.g. Motivational, Educational"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Call to Action</label>
+                    <input
+                      value={form.cta}
+                      onChange={e => setForm(f => ({ ...f, cta: e.target.value }))}
+                      placeholder="What do you want the audience to do next?"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </>
+              )}
             </div>
+
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
               <button
                 type="submit"
                 disabled={saving}
                 className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
-                {saving ? 'Creating…' : 'Create Project →'}
+                {saving ? 'Creating…' : `Create ${isTalkForm ? 'Talk' : 'Social Media Project'} →`}
               </button>
             </div>
           </form>
@@ -297,22 +348,12 @@ export default function ProjectsPage() {
             </svg>
           </div>
           <p className="text-sm font-medium text-gray-700 mb-1">No projects yet</p>
-          <p className="text-xs text-gray-400 max-w-xs mx-auto">
-            Build a talk, webinar, presentation, or email campaign using stories from the vault.
-          </p>
+          <p className="text-xs text-gray-400 max-w-xs mx-auto">Build a talk or social media project using stories from the vault.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {active.map(p => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              clientId={clientId}
-              frameworks={frameworks}
-              offers={offers}
-              onArchive={archiveProject}
-              onDelete={deleteProject}
-            />
+            <ProjectCard key={p.id} project={p} clientId={clientId} frameworks={frameworks} offers={offers} onArchive={archiveProject} onDelete={deleteProject} />
           ))}
           {archived.length > 0 && (
             <details>
@@ -321,15 +362,7 @@ export default function ProjectsPage() {
               </summary>
               <div className="space-y-3 mt-2">
                 {archived.map(p => (
-                  <ProjectCard
-                    key={p.id}
-                    project={p}
-                    clientId={clientId}
-                    frameworks={frameworks}
-                    offers={offers}
-                    onArchive={archiveProject}
-                    onDelete={deleteProject}
-                  />
+                  <ProjectCard key={p.id} project={p} clientId={clientId} frameworks={frameworks} offers={offers} onArchive={archiveProject} onDelete={deleteProject} />
                 ))}
               </div>
             </details>
@@ -341,12 +374,7 @@ export default function ProjectsPage() {
 }
 
 function ProjectCard({
-  project,
-  clientId,
-  frameworks,
-  offers,
-  onArchive,
-  onDelete,
+  project, clientId, frameworks, offers, onArchive, onDelete,
 }: {
   project: Project
   clientId: string
@@ -357,6 +385,7 @@ function ProjectCard({
 }) {
   const fw = frameworks.find(f => f.id === project.primary_framework_id)
   const offer = offers.find(o => o.id === project.offer_id)
+  const isTalk = (project.category ?? 'talk') === 'talk'
 
   return (
     <div className={`bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden ${project.status === 'archived' ? 'opacity-60' : ''}`}>
@@ -364,8 +393,11 @@ function ProjectCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isTalk ? 'bg-gray-100 text-gray-500' : 'bg-orange-50 text-orange-600'}`}>
+                {isTalk ? 'Talk' : 'Social Media'}
+              </span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_STYLES[project.project_type] ?? 'bg-gray-100 text-gray-600'}`}>
-                {TYPE_LABELS[project.project_type]}
+                {TYPE_LABELS[project.project_type] ?? project.project_type}
               </span>
               <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[project.status] ?? 'bg-gray-100 text-gray-500'}`}>
                 {project.status.replace(/_/g, ' ')}
@@ -376,26 +408,21 @@ function ProjectCard({
             </div>
             <h3 className="text-sm font-semibold text-gray-900">{project.title}</h3>
             {project.goal && <p className="text-xs text-gray-500 mt-0.5 truncate">{project.goal}</p>}
+            {project.one_big_idea && (
+              <p className="text-xs text-indigo-600 mt-1 truncate italic">OBI: {project.one_big_idea}</p>
+            )}
             <div className="flex gap-3 mt-2">
               {fw && <span className="text-xs text-gray-400">Framework: <span className="text-gray-600">{fw.name}</span></span>}
               {offer && <span className="text-xs text-gray-400">Offer: <span className="text-gray-600">{offer.name}</span></span>}
             </div>
           </div>
-          {project.readiness_score != null && (
-            <div className="text-right shrink-0">
-              <p className="text-xl font-bold text-gray-800">{Math.round(project.readiness_score)}</p>
-              <p className="text-xs text-gray-400">readiness</p>
-            </div>
-          )}
         </div>
       </Link>
       <div className="px-4 pb-3 flex justify-end">
-        <DropdownMenu
-          items={[
-            { label: project.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onArchive(project) },
-            { label: 'Delete', onClick: () => onDelete(project), destructive: true },
-          ]}
-        />
+        <DropdownMenu items={[
+          { label: project.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onArchive(project) },
+          { label: 'Delete', onClick: () => onDelete(project), destructive: true },
+        ]} />
       </div>
     </div>
   )

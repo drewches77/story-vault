@@ -27,8 +27,21 @@ export const FRAMEWORK_TYPES = [
 
 export const FRAMEWORK_STATUSES = ['draft', 'reviewed', 'approved', 'archived'] as const
 
-export const PROJECT_TYPES = ['talk', 'webinar', 'sales_presentation', 'email_campaign'] as const
+export const PROJECT_CATEGORIES = ['talk', 'social_media'] as const
+export const TALK_TYPES = ['keynote', 'webinar', 'sales_presentation', 'workshop'] as const
+export const SOCIAL_MEDIA_TYPES = ['weekly', 'email_campaign', 'launch_campaign'] as const
+export const PROJECT_TYPES = [...TALK_TYPES, ...SOCIAL_MEDIA_TYPES] as const
 export const PROJECT_STATUSES = ['draft', 'in_progress', 'ready_for_review', 'approved', 'archived'] as const
+
+export const SECTION_ROLES = [
+  'Opening Hook',
+  'Problem / Agitation',
+  'Framework Proof',
+  'Client Result',
+  'Objection Handler',
+  'Closing Story',
+  'CTA Story',
+] as const
 
 export const STORY_ROLES = [
   'opening_story', 'origin_story', 'credibility_story', 'failure_story',
@@ -51,8 +64,12 @@ export type StoryStatus = typeof STORY_STATUSES[number]
 export type ClientStatus = typeof CLIENT_STATUSES[number]
 export type FrameworkType = typeof FRAMEWORK_TYPES[number]
 export type FrameworkStatus = typeof FRAMEWORK_STATUSES[number]
+export type ProjectCategory = typeof PROJECT_CATEGORIES[number]
+export type TalkType = typeof TALK_TYPES[number]
+export type SocialMediaType = typeof SOCIAL_MEDIA_TYPES[number]
 export type ProjectType = typeof PROJECT_TYPES[number]
 export type ProjectStatus = typeof PROJECT_STATUSES[number]
+export type SectionRole = typeof SECTION_ROLES[number]
 export type StoryRole = typeof STORY_ROLES[number]
 export type AssetType = typeof ASSET_TYPES[number]
 export type OfferStatus = typeof OFFER_STATUSES[number]
@@ -151,7 +168,8 @@ export type Project = {
   id: string
   client_id: string
   vault_id: string | null
-  project_type: ProjectType
+  category: string
+  project_type: string
   title: string
   status: ProjectStatus
   audience: string | null
@@ -161,9 +179,23 @@ export type Project = {
   primary_framework_id: string | null
   length_minutes: number | null
   tone: string | null
+  one_big_idea: string | null
   setup_data: Record<string, unknown> | null
   readiness_score: number | null
   readiness_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TalkSection = {
+  id: string
+  project_id: string
+  title: string
+  notes: string | null
+  script: string | null
+  position: number
+  story_id: string | null
+  story_role: string | null
   created_at: string
   updated_at: string
 }
