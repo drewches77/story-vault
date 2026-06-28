@@ -217,7 +217,7 @@ export default function ClientPage() {
     // Upsert detailed scores if any are set
     const anyScore = clarityScore || emotionalScore || teachingScore || authorityScore || salesScore || relatabilityScore || reusabilityScore
     if (anyScore && storyId) {
-      await supabase.from('story_scores').upsert({
+      const { error: scoreErr } = await supabase.from('story_scores').upsert({
         story_id: storyId,
         clarity_score: clarityScore ? parseInt(clarityScore) : null,
         emotional_impact_score: emotionalScore ? parseInt(emotionalScore) : null,
@@ -228,6 +228,7 @@ export default function ClientPage() {
         reusability_score: reusabilityScore ? parseInt(reusabilityScore) : null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'story_id' })
+      if (scoreErr) alert(`Score save failed: ${scoreErr.message}`)
     }
 
     resetForm()

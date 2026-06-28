@@ -229,7 +229,7 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
           ].some(s => s != null)
 
           if (hasScores) {
-            await supabase.from('story_scores').upsert({
+            const { error: scoreErr } = await supabase.from('story_scores').upsert({
               story_id: storyData.id,
               clarity_score: row.clarity_score,
               emotional_impact_score: row.emotional_impact_score,
@@ -240,6 +240,7 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
               reusability_score: row.reusability_score,
               updated_at: new Date().toISOString(),
             }, { onConflict: 'story_id' })
+            if (scoreErr) console.error('story_scores upsert failed:', scoreErr.message)
           }
 
           // Tags
