@@ -388,7 +388,7 @@ function ProjectCard({
   const isTalk = (project.category ?? 'talk') === 'talk'
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden ${project.status === 'archived' ? 'opacity-60' : ''}`}>
+    <div className={`bg-white border border-gray-200 rounded-xl shadow-sm ${project.status === 'archived' ? 'opacity-60' : ''}`}>
       <Link href={`/clients/${clientId}/projects/${project.id}`} className="block p-4 hover:bg-gray-50 transition-colors">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
