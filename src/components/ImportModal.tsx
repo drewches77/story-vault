@@ -26,6 +26,8 @@ type JsonStoryRow = {
   _errors: string[]
 }
 
+type SyncRow = JsonStoryRow & { matchedStoryId: string | null }
+
 type Props = {
   vaultId: string
   onClose: () => void
@@ -77,7 +79,7 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
   const supabase = createClient()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [tab, setTab] = useState<'json' | 'file'>('json')
+  const [tab, setTab] = useState<'json' | 'sync' | 'file'>('json')
 
   // JSON mode state
   const [jsonText, setJsonText] = useState('')
@@ -88,6 +90,14 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
   const [fileRows, setFileRows] = useState<ImportRow[]>([])
   const [fileName, setFileName] = useState('')
   const [parsing, setParsing] = useState(false)
+
+  // Sync mode state
+  const [syncText, setSyncText] = useState('')
+  const [syncRows, setSyncRows] = useState<SyncRow[]>([])
+  const [syncError, setSyncError] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncDone, setSyncDone] = useState(false)
+  const [syncCount, setSyncCount] = useState(0)
 
   // Shared state
   const [importing, setImporting] = useState(false)
@@ -109,6 +119,58 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
 
   const validJsonRows = jsonRows.filter(r => r._errors.length === 0)
   const errorJsonRows = jsonRows.filter(r => r._errors.length > 0)
+
+  // --- Sync scores ---
+  async function handleSyncChange(text: string) {
+    setSyncText(text)
+    setSyncError('')
+    setSyncRows([])
+    if (!text.trim()) return
+    let rows: JsonStoryRow[]
+    try {
+      rows = parseJsonInput(text)
+    } catch {
+      setSyncError('Invalid JSON — paste the same JSON output used to import these stories.')
+      return
+    }
+
+    // Load vault stories to match by title
+    const { data: vaultStories } = await supabase
+      .from('stories')
+      .select('id, title')
+      .eq('vault_id', vaultId)
+
+    setSyncRows(rows.map(row => ({
+      ...row,
+      matchedStoryId: vaultStories?.find(
+        s => s.title.toLowerCase().trim() === row.title.toLowerCase().trim()
+      )?.id ?? null,
+    })))
+  }
+
+  async function handleSyncScores() {
+    const toUpdate = syncRows.filter(r => r.matchedStoryId && r._errors.length === 0)
+    if (!toUpdate.length) return
+    setSyncing(true)
+    let count = 0
+    for (const row of toUpdate) {
+      const { error } = await supabase.from('story_scores').upsert({
+        story_id: row.matchedStoryId,
+        clarity_score: row.clarity_score,
+        emotional_impact_score: row.emotional_impact_score,
+        teaching_value_score: row.teaching_value_score,
+        authority_value_score: row.authority_value_score,
+        sales_value_score: row.sales_value_score,
+        relatability_score: row.relatability_score,
+        reusability_score: row.reusability_score,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'story_id' })
+      if (!error) count++
+    }
+    setSyncCount(count)
+    setSyncing(false)
+    setSyncDone(true)
+  }
 
   // --- File parsing ---
   async function handleFile(file: File) {
@@ -240,6 +302,7 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
   }
 
   const readyCount = tab === 'json' ? validJsonRows.length : validFileRows.length
+  const syncReadyCount = syncRows.filter(r => r.matchedStoryId && r._errors.length === 0).length
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -280,12 +343,66 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
                   Paste JSON
                 </button>
                 <button
+                  onClick={() => setTab('sync')}
+                  className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${tab === 'sync' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Sync Scores
+                </button>
+                <button
                   onClick={() => setTab('file')}
                   className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${tab === 'file' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   Upload File
                 </button>
               </div>
+
+              {tab === 'sync' && (
+                syncDone ? (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">Scores updated for {syncCount} {syncCount === 1 ? 'story' : 'stories'}</p>
+                    <button onClick={() => { onDone(); onClose() }} className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-3 text-xs text-amber-700">
+                      Paste the same JSON you used to import these stories. Scores will be matched by title and updated — no new stories will be created.
+                    </div>
+                    <textarea
+                      value={syncText}
+                      onChange={e => handleSyncChange(e.target.value)}
+                      placeholder={'[\n  { "title": "...", "scores": { ... } },\n  ...\n]'}
+                      rows={8}
+                      className="w-full px-3 py-2.5 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-gray-700 bg-gray-50"
+                    />
+                    {syncError && (
+                      <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{syncError}</p>
+                    )}
+                    {syncRows.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          {syncRows.filter(r => r.matchedStoryId).length} matched · {syncRows.filter(r => !r.matchedStoryId).length} unmatched
+                        </p>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          {syncRows.map((row, i) => (
+                            <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${row.matchedStoryId ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-200'}`}>
+                              <span className={`shrink-0 font-bold ${row.matchedStoryId ? 'text-emerald-500' : 'text-gray-300'}`}>{row.matchedStoryId ? '✓' : '—'}</span>
+                              <span className={`flex-1 truncate font-medium ${row.matchedStoryId ? 'text-emerald-800' : 'text-gray-400'}`}>{row.title}</span>
+                              {!row.matchedStoryId && <span className="text-gray-400 shrink-0 italic">no match</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              )}
 
               {tab === 'json' ? (
                 <>
@@ -441,18 +558,28 @@ export default function ImportModal({ vaultId, onClose, onDone }: Props) {
         </div>
 
         {/* Footer */}
-        {!done && (
+        {!done && !syncDone && (
           <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-            <button onClick={onClose} disabled={importing} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
+            <button onClick={onClose} disabled={importing || syncing} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
               Cancel
             </button>
-            <button
-              onClick={handleImport}
-              disabled={readyCount === 0 || importing}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            >
-              {importing ? 'Importing…' : `Import ${readyCount} ${readyCount === 1 ? 'Story' : 'Stories'}`}
-            </button>
+            {tab === 'sync' ? (
+              <button
+                onClick={handleSyncScores}
+                disabled={syncReadyCount === 0 || syncing}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {syncing ? 'Updating…' : `Update Scores for ${syncReadyCount} ${syncReadyCount === 1 ? 'Story' : 'Stories'}`}
+              </button>
+            ) : (
+              <button
+                onClick={handleImport}
+                disabled={readyCount === 0 || importing}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {importing ? 'Importing…' : `Import ${readyCount} ${readyCount === 1 ? 'Story' : 'Stories'}`}
+              </button>
+            )}
           </div>
         )}
       </div>
